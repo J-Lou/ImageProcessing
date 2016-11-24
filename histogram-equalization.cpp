@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "hist-equ.h"
+#include "hist-equ.cuh"
 
 
 void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin){
@@ -12,6 +12,10 @@ void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin
 
     for ( i = 0; i < img_size; i ++){
         hist_out[img_in[i]] ++;
+    }
+	printf("\n\n");
+    for ( i = 0; i < nbr_bin; i ++){
+       printf("%d ",hist_out[i]);
     }
 }
 
