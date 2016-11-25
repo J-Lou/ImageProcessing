@@ -65,5 +65,6 @@ void histogram_gpu(int * hist_out, unsigned char * img_in, int img_size, int nbr
 void histogram_equalization_gpu(unsigned char * img_out, unsigned char * img_in, 
                             int * hist_in, int img_size, int nbr_bin);
 PGM_IMG contrast_enhancement_g_gpu(PGM_IMG img_in);
-
+PPM_IMG contrast_enhancement_c_yuv_gpu(PPM_IMG img_in);
+PPM_IMG contrast_enhancement_c_hsl_gpu(PPM_IMG img_in);
 #endif

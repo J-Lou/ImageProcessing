@@ -49,14 +49,15 @@ void histogram_gpu(int * hist_out, unsigned char * img_in, int img_size, int nbr
 }
 // Device code
 __global__ void construct_lut_gpu(int * cdf, int * lut, int * hist_in, 
-				  int * nbr_bin, int * min, int * d) {
+				  int * min, int * d) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
-	if (i < *nbr_bin) {
-		lut[i] = (int)(((float)(cdf[i]) - (*min))*255/(*d) + 0.5);
-		if(lut[i] < 0) {
-			lut[i] = 0;
-		}	
-	}
+	__shared__ int lut_temp[256];
+	lut_temp[i] = (int)(((float)(cdf[i]) - (*min))*255/(*d) + 0.5);
+	if(lut_temp[i] < 0) {
+			lut_temp[i] = 0;
+	}	
+	__syncthreads();
+	lut[i] = lut_temp[i];
 }
 // Device code
 __global__ void get_result_image_gpu(int * lut, unsigned char * img_out,
@@ -100,8 +101,8 @@ void histogram_equalization_gpu(unsigned char * img_out, unsigned char * img_in,
 	cudaMalloc(&hist_in_gpu, nbr_bin*(sizeof(int)));
 	int* img_size_gpu;
 	cudaMalloc(&img_size_gpu, sizeof(int));
-	int* nbr_bin_gpu;
-	cudaMalloc(&nbr_bin_gpu, sizeof(int));
+	//int* nbr_bin_gpu;
+	//cudaMalloc(&nbr_bin_gpu, sizeof(int));
 	int* min_gpu;
 	cudaMalloc(&min_gpu, sizeof(int));
 	int* d_gpu;
@@ -112,18 +113,18 @@ void histogram_equalization_gpu(unsigned char * img_out, unsigned char * img_in,
 	cudaMemcpy(img_out_gpu, img_out, img_size*(sizeof(unsigned char)), cudaMemcpyHostToDevice);
 	cudaMemcpy(img_in_gpu, img_in, img_size*(sizeof(unsigned char)), cudaMemcpyHostToDevice);
 	cudaMemcpy(img_size_gpu, &img_size, sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(nbr_bin_gpu, &nbr_bin, sizeof(int), cudaMemcpyHostToDevice);
+	//cudaMemcpy(nbr_bin_gpu, &nbr_bin, sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(min_gpu, &min, sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_gpu, &d, sizeof(int), cudaMemcpyHostToDevice);
 	// Invoke kernel
-	int blocksPerGrid = (img_size + nbr_bin - 1) / nbr_bin;
-	construct_lut_gpu<<<blocksPerGrid, nbr_bin>>>
-		(cdf_gpu, lut_gpu, hist_in_gpu, nbr_bin_gpu, min_gpu, d_gpu);
+	construct_lut_gpu<<<1, nbr_bin>>>
+		(cdf_gpu, lut_gpu, hist_in_gpu, min_gpu, d_gpu);
 	// Copy result from device memory to host memory
 	cudaMemcpy(lut, lut_gpu, nbr_bin*(sizeof(int)), cudaMemcpyDeviceToHost);
 	// Copy vectors from host memory to device memory
 	cudaMemcpy(lut_gpu, lut, nbr_bin*(sizeof(int)), cudaMemcpyHostToDevice);
-	// Invoke kernel
+	// Invoke kernel	
+	int blocksPerGrid = (img_size + nbr_bin - 1) / nbr_bin;
 	get_result_image_gpu<<<blocksPerGrid, nbr_bin>>>
 		(lut_gpu, img_out_gpu, img_in_gpu, img_size_gpu);
 	// Copy vectors from device memory to host memory
@@ -135,7 +136,7 @@ void histogram_equalization_gpu(unsigned char * img_out, unsigned char * img_in,
 	cudaFree(img_in_gpu);
 	cudaFree(hist_in_gpu);
 	cudaFree(img_size_gpu);
-	cudaFree(nbr_bin_gpu);
+	//cudaFree(nbr_bin_gpu);
 	cudaFree(min_gpu);
 	cudaFree(d_gpu);	
 }
