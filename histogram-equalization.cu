@@ -4,10 +4,15 @@
 #include "hist-equ.cuh"
 
 // Device code
-__global__ void construct_histogram_gpu(int * hist_out, unsigned char * img_in, int * img_size, int * nbr_bin) {
+__global__ void construct_histogram_gpu(int * hist_out, unsigned char * img_in, int * img_size) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	//__shared__ int s_hist_out[256];
 	if (i < *img_size) {
-		atomicAdd(&hist_out[img_in[i]], 1);
+	//s_hist_out[img_in[i]] = hist_out[img_in[i]];
+	//__syncthreads();
+	atomicAdd(&hist_out[img_in[i]], 1);
+	//s_hist_out[img_in[i]] = 0;
+	//hist_out[img_in[i]] = s_hist_out[img_in[i]];
 	}
 }
 // Host code
@@ -23,36 +28,31 @@ void histogram_gpu(int * hist_out, unsigned char * img_in, int img_size, int nbr
 	cudaMalloc(&img_in_gpu, img_size*(sizeof(unsigned char)));
 	int* img_size_gpu;
 	cudaMalloc(&img_size_gpu, sizeof(int));
-	int* nbr_bin_gpu;
-	cudaMalloc(&nbr_bin_gpu, sizeof(int));
 	// Copy vectors from host memory to device memory
 	cudaMemcpy(hist_out_gpu, hist_out, nbr_bin*(sizeof(int)), cudaMemcpyHostToDevice);
 	cudaMemcpy(img_in_gpu, img_in, img_size*(sizeof(unsigned char)), cudaMemcpyHostToDevice);
 	cudaMemcpy(img_size_gpu, &img_size, sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(nbr_bin_gpu, &nbr_bin, sizeof(int), cudaMemcpyHostToDevice);
 	// Invoke kernel
 	int blocksPerGrid = (img_size + nbr_bin - 1) / nbr_bin;
 	construct_histogram_gpu<<<blocksPerGrid, nbr_bin>>>
-		(hist_out_gpu, img_in_gpu, img_size_gpu, nbr_bin_gpu);
+		(hist_out_gpu, img_in_gpu, img_size_gpu);
 	// Copy result from device memory to host memory
 	cudaMemcpy(hist_out, hist_out_gpu, nbr_bin*(sizeof(int)), cudaMemcpyDeviceToHost);
 	// Free device memory
 	cudaFree(hist_out_gpu);
 	cudaFree(img_in_gpu);
 	cudaFree(img_size_gpu);
-	cudaFree(nbr_bin_gpu);
-	printf("\n\n");
+	/*printf("\n\n");
 	for(i = 0; i < nbr_bin; i++) {
 		printf("%d ", hist_out[i]);
-	}
+	}*/
 }
 // Device code
 __global__ void construct_lut_gpu(int * cdf, int * lut, int * hist_in, 
 				  int * nbr_bin, int * min, int * d) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i < *nbr_bin) {
-		*cdf += hist_in[i];
-		lut[i] = (int)(((float)(*cdf) - (*min))*255/(*d) + 0.5);
+		lut[i] = (int)(((float)(cdf[i]) - (*min))*255/(*d) + 0.5);
 		if(lut[i] < 0) {
 			lut[i] = 0;
 		}	
@@ -81,6 +81,10 @@ void histogram_equalization_gpu(unsigned char * img_out, unsigned char * img_in,
 	i = 0;
 	while (min == 0) {
 		min = hist_in[i++];
+	}
+	cdf[0] = hist_in[0];
+	for(i = 1; i < nbr_bin; i++) {
+		cdf[i] = cdf[i-1] + hist_in[i];
 	}
 	d = img_size - min;
 	// Allocate vectors in device memory
