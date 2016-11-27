@@ -73,7 +73,7 @@ void run_gpu_gray_test(PGM_IMG img_in)
     PGM_IMG img_obuf;
     printf("Starting GPU processing...\n");
     //TODO: run your GPU implementation here
-    
+    cudaFree(0); // Initializing CUDA
     sdkCreateTimer(&timer);
     sdkStartTimer(&timer);
     img_obuf = contrast_enhancement_g_gpu(img_in);
