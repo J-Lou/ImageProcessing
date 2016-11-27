@@ -6,13 +6,8 @@
 // Device code
 __global__ void construct_histogram_gpu(int * hist_out, unsigned char * img_in, int * img_size) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
-	//__shared__ int s_hist_out[256];
 	if (i < *img_size) {
-	//s_hist_out[img_in[i]] = hist_out[img_in[i]];
-	//__syncthreads();
-	atomicAdd(&hist_out[img_in[i]], 1);
-	//s_hist_out[img_in[i]] = 0;
-	//hist_out[img_in[i]] = s_hist_out[img_in[i]];
+		atomicAdd(&hist_out[img_in[i]], 1);
 	}
 }
 // Host code
@@ -42,10 +37,6 @@ void histogram_gpu(int * hist_out, unsigned char * img_in, int img_size, int nbr
 	cudaFree(hist_out_gpu);
 	cudaFree(img_in_gpu);
 	cudaFree(img_size_gpu);
-	/*printf("\n\n");
-	for(i = 0; i < nbr_bin; i++) {
-		printf("%d ", hist_out[i]);
-	}*/
 }
 // Device code
 __global__ void construct_lut_gpu(int * cdf, int * lut, int * hist_in, 
@@ -101,8 +92,6 @@ void histogram_equalization_gpu(unsigned char * img_out, unsigned char * img_in,
 	cudaMalloc(&hist_in_gpu, nbr_bin*(sizeof(int)));
 	int* img_size_gpu;
 	cudaMalloc(&img_size_gpu, sizeof(int));
-	//int* nbr_bin_gpu;
-	//cudaMalloc(&nbr_bin_gpu, sizeof(int));
 	int* min_gpu;
 	cudaMalloc(&min_gpu, sizeof(int));
 	int* d_gpu;
@@ -113,7 +102,6 @@ void histogram_equalization_gpu(unsigned char * img_out, unsigned char * img_in,
 	cudaMemcpy(img_out_gpu, img_out, img_size*(sizeof(unsigned char)), cudaMemcpyHostToDevice);
 	cudaMemcpy(img_in_gpu, img_in, img_size*(sizeof(unsigned char)), cudaMemcpyHostToDevice);
 	cudaMemcpy(img_size_gpu, &img_size, sizeof(int), cudaMemcpyHostToDevice);
-	//cudaMemcpy(nbr_bin_gpu, &nbr_bin, sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(min_gpu, &min, sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_gpu, &d, sizeof(int), cudaMemcpyHostToDevice);
 	// Invoke kernel
@@ -136,7 +124,6 @@ void histogram_equalization_gpu(unsigned char * img_out, unsigned char * img_in,
 	cudaFree(img_in_gpu);
 	cudaFree(hist_in_gpu);
 	cudaFree(img_size_gpu);
-	//cudaFree(nbr_bin_gpu);
 	cudaFree(min_gpu);
 	cudaFree(d_gpu);	
 }
