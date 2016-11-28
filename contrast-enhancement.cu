@@ -16,8 +16,9 @@ __device__ unsigned char clip_rgb_gpu(int x)
 }
 
 __global__ void rgb2yuv_conversion_gpu(unsigned char * img_y, unsigned char * img_u,
-										unsigned char * img_v, unsigned char * img_r, 
-										unsigned char * img_g, unsigned char * img_b) {
+					unsigned char * img_v, unsigned char * img_r, 
+					unsigned char * img_g, unsigned char * img_b) 
+{
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	unsigned char r, g, b;
 	unsigned char y, cb, cr;
